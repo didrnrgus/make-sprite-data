@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using UnityEditor.U2D;
-using UnityEditor.U2D.Sprites; // SpriteDataProviderFactories 사용을 위해 추가
+using UnityEditor.U2D.Sprites;
 using System.Collections.Generic;
 using System.IO;
 
@@ -23,7 +23,6 @@ using System.IO;
 /// https://docs.unity3d.com/Packages/com.unity.2d.sprite@1.0/manual/DataProvider.html
 /// 
 /// </summary>
-
 public class SpriteAtlasExporter : MonoBehaviour
 {
     [MenuItem("Tools/Export Sprite Atlas to JSON")]
@@ -54,6 +53,10 @@ public class SpriteAtlasExporter : MonoBehaviour
             return;
         }
 
+        // 원본 이미지 크기 가져오기
+        int width, height;
+        textureImporter.GetSourceTextureWidthAndHeight(out width, out height);
+
         // 스프라이트 데이터 가져오기
         List<SpriteData> spriteList = GetSpriteData(textureImporter);
 
@@ -64,12 +67,11 @@ public class SpriteAtlasExporter : MonoBehaviour
         }
 
         // JSON 변환 및 저장
-        SaveSpriteDataAsJson(texturePath, spriteList);
+        SaveSpriteDataAsJson(texturePath, width, height, spriteList);
     }
 
     static List<SpriteData> GetSpriteData(TextureImporter textureImporter)
     {
-        // `SpriteDataProviderFactories`를 사용하여 `ISpriteEditorDataProvider` 가져오기
         var factory = new SpriteDataProviderFactories();
         factory.Init();
         var provider = factory.GetSpriteEditorDataProviderFromObject(textureImporter);
@@ -80,12 +82,10 @@ public class SpriteAtlasExporter : MonoBehaviour
             return null;
         }
 
-        // SpriteEditorDataProvider 초기화 후 데이터 가져오기
         provider.InitSpriteEditorDataProvider();
-        var spriteRects = provider.GetSpriteRects(); // 스프라이트 메타데이터 가져오기
-        provider.Apply(); // 변경 적용
+        var spriteRects = provider.GetSpriteRects();
+        provider.Apply();
 
-        // Reimport하여 변경 적용
         var assetImporter = provider.targetObject as AssetImporter;
         assetImporter.SaveAndReimport();
 
@@ -113,21 +113,21 @@ public class SpriteAtlasExporter : MonoBehaviour
         return spriteList;
     }
 
-    static void SaveSpriteDataAsJson(string texturePath, List<SpriteData> spriteList)
+    static void SaveSpriteDataAsJson(string texturePath, int width, int height, List<SpriteData> spriteList)
     {
-        // 파일 이름 추출 (확장자 제외)
         string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(texturePath);
 
-        // JSON 변환
         var spriteAtlas = new SpriteAtlas
         {
             fileName = fileNameWithoutExtension,
             prefix = "",
+            sizeX = width,
+            sizeY = height,
             sprites = spriteList
         };
+
         string json = JsonUtility.ToJson(spriteAtlas, true);
 
-        // JSON 저장 경로 설정
         string savePath = EditorUtility.SaveFilePanel("Save JSON File", Application.dataPath, fileNameWithoutExtension, "json");
         if (string.IsNullOrEmpty(savePath))
         {
@@ -155,5 +155,7 @@ public class SpriteAtlas
 {
     public string fileName;
     public string prefix;
+    public float sizeX;
+    public float sizeY;
     public List<SpriteData> sprites;
 }
